@@ -687,6 +687,12 @@ class ClientJS {
     return s;
   }
 
+  void _subjs(String? subject, int sid, {String? queueGroup}) {
+      
+      _add('sub MYVI.CAR --durable checkrequest $sid');
+    
+  }
+
   void _sub(String? subject, int sid, {String? queueGroup}) {
     if (queueGroup == null) {
       _add('sub $subject $sid');

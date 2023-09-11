@@ -20,11 +20,15 @@ void main() {
       var client = ClientJS();
       // await client.connect(Uri.parse('nats://que.orderly.my:4222'), retryInterval: 1);
       await client.connect(Uri.parse('nats://localhost:4222'), retryInterval: 1);
-      var sub = client.sub('subject1');
-      client.pub('subject1', Uint8List.fromList('message1'.codeUnits));
+      //below code is okay. We need to pass stream name
+      client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass'.codeUnits));
+
+      var sub = client.sub('MYVI.CAR');
+      client.pub('MYVI.CAR', Uint8List.fromList('messagewildfailpass'.codeUnits));
       var msg = await sub.stream.first;
+      print(msg);
       await client.close();
-      expect('message1', equals('message1'));
+      //expect('message1', equals('message1'));
     });
     test('respond', () async {
       var server = Client();
