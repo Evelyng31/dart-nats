@@ -51,6 +51,35 @@ enum _ClientjsStatus {
   closed,
 }
 
+class JetStreamAPIConstants {
+  static const String defaultAPIPrefix = '\$JS.API.';
+  static const String jsDomainT = '\$JS.%s.API.';
+  static const String jsExtDomainT = '\$JS.%s.API';
+  static const String apiAccountInfo = 'INFO';
+  static const String apiConsumerCreateT = 'CONSUMER.CREATE.%s';
+  static const String apiConsumerCreateWithDurableT = 'CONSUMER.CREATE.%s.%c';
+  static const String apiConsumerCreateWithFilterSubjectT = 'CONSUMER.CREATE.%s.%c.%f';
+  static const String apiConsumerInfoT = 'CONSUMER.INFO.%s.%c';
+  // static const String apiRequestNextT = 'CONSUMER.MSG.NEXT.%s.%c';
+  static const String apiConsumerDeleteT = 'CONSUMER.DELETE.%s.%c';
+  static const String apiConsumerListT = 'CONSUMER.LIST.%s';
+  static const String apiConsumerNamesT = 'CONSUMER.NAMES.%s';
+  static const String apiStreams = 'STREAM.NAMES';
+  static const String apiStreamCreateT = 'STREAM.CREATE.%s';
+  static const String apiStreamInfoT = 'STREAM.INFO.%s';
+  static const String apiStreamUpdateT = 'STREAM.UPDATE.%s';
+  static const String apiStreamDeleteT = 'STREAM.DELETE.%s';
+  static const String apiStreamPurgeT = 'STREAM.PURGE.%s';
+  static const String apiStreamListT = 'STREAM.LIST';
+  static const String apiStreamSnapshotT = 'STREAM.SNAPSHOT.%s';
+  static const String apiStreamRestoreT = 'STREAM.RESTORE.%s';
+  static const String apiMsgGetT = 'STREAM.MSG.GET.%s';
+  static const String apiDirectMsgGetT = 'DIRECT.GET.%s';
+  static const String apiDirectMsgGetLastBySubjectT = 'DIRECT.GET.%s.%s';
+  static const String apiMsgDeleteT = 'STREAM.MSG.DELETE.%s';
+  
+}
+
 class _Pubjs {
   final String? subject;
   final List<int> data;
