@@ -22,7 +22,8 @@ void main() {
       var apiPrefix = JetStreamAPIConstants.apiConsumerCreateT.replaceAll("%s", string);
       String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;     
       print(apiString);     
-      client.pubString(apiString, '{"Stream Name":"TESTSTREAM", "Name":"mythird"}', replyTo: inbox);
+      client.pubString(apiString, '{"Stream Name":"TESTSTREAM", "Name":"myteststreamconsumer", "Acknowledgement Policy":"explicit","Replay Policy":"instant"}', replyTo: inbox);
+  // client.pubString(apiString, '{"Name":"myteststreamconsumer","Delivery Target":"mydeliverytargetagain", "Delivery Queue Group":"queuename", "Acknowledgement Policy":"explicit","Replay Policy":"instant",}', replyTo: inbox);
 
       var receive = await inboxSub.stream.first;
       var receiveString =   utf8.decode(receive.data);

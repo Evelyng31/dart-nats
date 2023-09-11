@@ -71,7 +71,7 @@ void main() {
 
       var inbox = newInbox();
       var inboxSub = client.sub(inbox);
-    //bare min config as below
+      //bare min config as below
       client.pubString('\$JS.API.STREAM.CREATE.MYSTREAMAGAIN', '{"Name":"MYSTREAMAGAIN","Subjects":["lonely"], "Storage":"file", "Retention Policy":"Limits", "Discard policy":"old"}', replyTo: inbox);
 
       var receive = await inboxSub.stream.first;
