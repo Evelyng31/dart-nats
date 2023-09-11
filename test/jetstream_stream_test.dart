@@ -64,6 +64,15 @@ void main() {
      //  expect(map['type'], equals('io.nats.jetstream.api.v1.stream_list_response'));
     });
 
+
+
+// {\\\"name\\\":\\\"ORDERS\\\",\\\"subjects\\\":[\\\"ORDERS.*\\\"],
+// \\\"retention\\\":\\\"limits\\\",\\\"max_consumers\\\":-1,\\\"max_msgs_per_subject\\\":-1,
+// \\\"max_msgs\\\":-1,\\\"max_bytes\\\":-1,\\\"max_age\\\":0,\\\"max_msg_size\\\":-1,\\\
+// "storage\\\":\\\"file\\\",\\\"discard\\\":\\\"old\\\",\\\"num_replicas\\\":1,\\\
+// "duplicate_window\\\":120000000000,\\\"sealed\\\":false,\\\"deny_delete\\\":false,\\\
+// "deny_purge\\\":false,\\\"allow_rollup_hdrs\\\":false,\\\"allow_direct\\\":false,\\\
+// "mirror_direct\\\":false}"
     test('jetstreamCreateStream', () async {
       var client = ClientJS();
       await client.connect(Uri.parse('nats://localhost:4222'),
@@ -72,7 +81,7 @@ void main() {
       var inbox = newInbox();
       var inboxSub = client.sub(inbox);
       //bare min config as below
-      client.pubString('\$JS.API.STREAM.CREATE.MYSTREAMAGAIN', '{"Name":"MYSTREAMAGAIN","Subjects":["lonely"], "Storage":"file", "Retention Policy":"Limits", "Discard policy":"old"}', replyTo: inbox);
+      client.pubString('\$JS.API.STREAM.CREATE.MYVI', '{"Name":"MYVI","Subjects":["MYVI.*"], "Storage":"file", "Retention Policy":"Limits", "Discard policy":"old"}', replyTo: inbox);
 
       var receive = await inboxSub.stream.first;
       var receiveString =   utf8.decode(receive.data);
@@ -81,8 +90,8 @@ void main() {
        expect(map['type'], equals('io.nats.jetstream.api.v1.stream_create_response'));
     });
 
- ///TODO: Config Struct - Still need to add config file...
       test('jetstreamUpdateStream', () async {
+        //Can only update subjects
       var client = ClientJS();
       await client.connect(Uri.parse('nats://localhost:4222'),
           retryInterval: 1);

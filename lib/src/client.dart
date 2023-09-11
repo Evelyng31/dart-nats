@@ -387,7 +387,6 @@ class Client {
 
     ///decode operation
     var i = line.indexOf(' ');
-        print(line);
     String op, data;
     if (i != -1) {
   
@@ -397,7 +396,6 @@ class Client {
       op = line.trim().toLowerCase();
       data = '';
     }
-print(op);
     ///process operation
     switch (op) {
       case 'msg':
@@ -806,6 +804,7 @@ print(op);
     Duration timeout = const Duration(seconds: 2),
     T Function(String)? jsonDecoder,
   }) {
+    print(data);
     return request<T>(
       subj,
       Uint8List.fromList(data.codeUnits),
