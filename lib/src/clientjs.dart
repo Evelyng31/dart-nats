@@ -8,18 +8,18 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'common.dart';
 import 'inbox.dart';
-import 'message.dart';
+import 'messagejs.dart';
 import 'nkeys.dart';
-import 'subscription.dart';
+import 'subscriptionjs.dart';
 
-enum _ReceiveState {
+enum _ReceiveJSState {
   idle, //op=msg -> msg
   msg, //newline -> idle
 
 }
 
 ///status of the nats client
-enum Status {
+enum jsStatus {
   /// disconnected or not connected
   disconnected,
 
@@ -45,24 +45,24 @@ enum Status {
   // draining_pubs,
 }
 
-enum _ClientStatus {
+enum _ClientjsStatus {
   init,
   used,
   closed,
 }
 
-class _Pub {
+class _Pubjs {
   final String? subject;
   final List<int> data;
   final String? replyTo;
 
-  _Pub(this.subject, this.data, this.replyTo);
+  _Pubjs(this.subject, this.data, this.replyTo);
 }
 
 ///NATS client
-class Client {
+class ClientJS {
   var _ackStream = StreamController<bool>.broadcast();
-  _ClientStatus _clientStatus = _ClientStatus.init;
+  _ClientjsStatus _clientStatus = _ClientjsStatus.init;
   WebSocketChannel? _wsChannel;
   Socket? _tcpSocket;
   SecureSocket? _secureSocket;
@@ -73,23 +73,23 @@ class Client {
   late Completer _pingCompleter;
   late Completer _connectCompleter;
 
-  var _status = Status.disconnected;
+  var _status = jsStatus.disconnected;
 
   /// true if connected
-  bool get connected => _status == Status.connected;
+  bool get connected => _status == jsStatus.connected;
 
-  final _statusController = StreamController<Status>.broadcast();
+  final _statusController = StreamController<jsStatus>.broadcast();
 
   var _channelStream = StreamController();
 
   ///status of the client
-  Status get status => _status;
+  jsStatus get status => _status;
 
   /// accept bad certificate NOT recomend to use in production
   bool acceptBadCert = false;
 
   /// Stream status for status update
-  Stream<Status> get statusStream => _statusController.stream;
+  Stream<jsStatus> get statusStream => _statusController.stream;
 
   var _connectOption = ConnectOption();
 
@@ -127,14 +127,14 @@ class Client {
   ///server info
   Info? get info => _info;
 
-  final _subs = <int, Subscription>{};
+  final _subs = <int, SubscriptionJS>{};
   final _backendSubs = <int, bool>{};
-  final _pubBuffer = <_Pub>[];
+  final _pubBuffer = <_Pubjs>[];
 
   int _ssid = 0;
 
   List<int> _buffer = [];
-  _ReceiveState _receiveState = _ReceiveState.idle;
+  _ReceiveJSState _receiveState = _ReceiveJSState.idle;
   String _receiveLine1 = '';
   Future _sign() async {
     if (_info.nonce != null && _nkeys != null) {
@@ -145,7 +145,7 @@ class Client {
   }
 
   ///NATS Client Constructor
-  Client() {
+  ClientJS() {
     _steamHandle();
   }
 
@@ -159,11 +159,12 @@ class Client {
       // }
 
       //Thank aktxyz for contribution
-      while (_receiveState == _ReceiveState.idle && _buffer.contains(13)) {
+      while (_receiveState == _ReceiveJSState.idle && _buffer.contains(13)) {
         var n13 = _buffer.indexOf(13);
         var msgFull =
             String.fromCharCodes(_buffer.take(n13)).toLowerCase().trim();
         var msgList = msgFull.split(' ');
+
         var msgType = msgList[0];
         //print('... process $msgType ${_buffer.length}');
 
@@ -196,14 +197,14 @@ class Client {
   }) async {
     this._retry = retry;
     _connectCompleter = Completer();
-    if (_clientStatus == _ClientStatus.used) {
+    if (_clientStatus == _ClientjsStatus.used) {
       throw Exception(
           NatsException('client in use. must close before call connect'));
     }
-    if (status != Status.disconnected && status != Status.closed) {
+    if (status != jsStatus.disconnected && status != jsStatus.closed) {
       return Future.error('Error: status not disconnected and not closed');
     }
-    _clientStatus = _ClientStatus.used;
+    _clientStatus = _ClientjsStatus.used;
     if (connectOption != null) _connectOption = connectOption;
     do {
       _connectLoop(
@@ -213,22 +214,22 @@ class Client {
         retryCount: retryCount,
       );
 
-      if (_clientStatus == _ClientStatus.closed || status == Status.closed) {
+      if (_clientStatus == _ClientjsStatus.closed || status == jsStatus.closed) {
         if (!_connectCompleter.isCompleted) {
           _connectCompleter.complete();
         }
         close();
-        _clientStatus = _ClientStatus.closed;
+        _clientStatus = _ClientjsStatus.closed;
         return;
       }
       if (!this._retry || retryCount != -1) {
         return _connectCompleter.future;
       }
       await for (var s in statusStream) {
-        if (s == Status.disconnected) {
+        if (s == jsStatus.disconnected) {
           break;
         }
-        if (s == Status.closed) {
+        if (s == jsStatus.closed) {
           return;
         }
       }
@@ -244,9 +245,9 @@ class Client {
         count == 0 || ((count < retryCount || retryCount == -1) && this._retry);
         count++) {
       if (count == 0) {
-        _setStatus(Status.connecting);
+        _setStatus(jsStatus.connecting);
       } else {
-        _setStatus(Status.reconnecting);
+        _setStatus(jsStatus.reconnecting);
       }
 
       try {
@@ -267,11 +268,11 @@ class Client {
         if (!_connectCompleter.isCompleted) {
           _connectCompleter.completeError(err);
         }
-        _setStatus(Status.disconnected);
+        _setStatus(jsStatus.disconnected);
       }
     }
     if (!_connectCompleter.isCompleted) {
-      _clientStatus = _ClientStatus.closed;
+      _clientStatus = _ClientjsStatus.closed;
       _connectCompleter
           .completeError(NatsException('can not connect ${uri.toString()}'));
     }
@@ -293,12 +294,12 @@ class Client {
           if (_wsChannel == null) {
             return false;
           }
-          _setStatus(Status.infoHandshake);
+          _setStatus(jsStatus.infoHandshake);
           _wsChannel?.stream.listen((event) {
             if (_channelStream.isClosed) return;
             _channelStream.add(event);
           }, onDone: () {
-            _setStatus(Status.disconnected);
+            _setStatus(jsStatus.disconnected);
           }, onError: (e) {
             close();
             throw NatsException('listen ws error: $e');
@@ -317,14 +318,14 @@ class Client {
           if (_tcpSocket == null) {
             return false;
           }
-          _setStatus(Status.infoHandshake);
+          _setStatus(jsStatus.infoHandshake);
           _tcpSocket!.listen((event) {
             if (_secureSocket == null) {
               if (_channelStream.isClosed) return;
               _channelStream.add(event);
             }
           }).onDone(() {
-            _setStatus(Status.disconnected);
+            _setStatus(jsStatus.disconnected);
           });
           return true;
         case 'tls':
@@ -336,7 +337,7 @@ class Client {
           _tcpSocket = await Socket.connect(uri.host, port,
               timeout: Duration(seconds: timeout));
           if (_tcpSocket == null) break;
-          _setStatus(Status.infoHandshake);
+          _setStatus(jsStatus.infoHandshake);
           _tcpSocket!.listen((event) {
             if (_secureSocket == null) {
               if (_channelStream.isClosed) return;
@@ -387,32 +388,31 @@ class Client {
 
     ///decode operation
     var i = line.indexOf(' ');
-        print(line);
+ 
     String op, data;
     if (i != -1) {
-  
       op = line.substring(0, i).trim().toLowerCase();
       data = line.substring(i).trim();
     } else {
       op = line.trim().toLowerCase();
       data = '';
     }
-print(op);
+
     ///process operation
     switch (op) {
       case 'msg':
-        _receiveState = _ReceiveState.msg;
+        _receiveState = _ReceiveJSState.msg;
         _receiveLine1 = line;
         _processMsg();
         _receiveLine1 = '';
-        _receiveState = _ReceiveState.idle;
+        _receiveState = _ReceiveJSState.idle;
         break;
       case 'hmsg':
-        _receiveState = _ReceiveState.msg;
+        _receiveState = _ReceiveJSState.msg;
         _receiveLine1 = line;
         _processHMsg();
         _receiveLine1 = '';
-        _receiveState = _ReceiveState.idle;
+        _receiveState = _ReceiveJSState.idle;
         break;
       case 'info':
         _info = Info.fromJson(jsonDecode(data));
@@ -421,7 +421,7 @@ print(op);
         }
 
         if ((_info.tlsRequired ?? false) && _tcpSocket != null) {
-          _setStatus(Status.tlsHandshake);
+          _setStatus(jsStatus.tlsHandshake);
           var secureSocket = await SecureSocket.secure(
             _tcpSocket!,
             onBadCertificate: (certificate) {
@@ -442,12 +442,12 @@ print(op);
         if (_connectOption.verbose == true) {
           var ack = await _ackStream.stream.first;
           if (ack) {
-            _setStatus(Status.connected);
+            _setStatus(jsStatus.connected);
           } else {
-            _setStatus(Status.disconnected);
+            _setStatus(jsStatus.disconnected);
           }
         } else {
-          _setStatus(Status.connected);
+          _setStatus(jsStatus.connected);
         }
         _backendSubscriptAll();
         _flushPubBuffer();
@@ -456,7 +456,7 @@ print(op);
         }
         break;
       case 'ping':
-        if (status == Status.connected) {
+        if (status == jsStatus.connected) {
           _add('pong');
         }
         break;
@@ -500,7 +500,7 @@ print(op);
     }
 
     if (_subs[sid] != null) {
-      _subs[sid]?.add(Message(subject, sid, payload, this, replyTo: replyTo));
+      _subs[sid]?.add(JSMessage(subject, sid, payload, this, replyTo: replyTo));
     }
   }
 
@@ -530,8 +530,8 @@ print(op);
     }
 
     if (_subs[sid] != null) {
-      var msg = Message(subject, sid, payload, this,
-          replyTo: replyTo, header: Header.fromBytes(header));
+      var msg = JSMessage(subject, sid, payload, this,
+          replyTo: replyTo, header: JSHeader.fromBytes(header));
       _subs[sid]?.add(msg);
     }
   }
@@ -556,11 +556,11 @@ print(op);
   ///publish by byte (Uint8List) return true if sucess sending or buffering
   ///return false if not connect
   Future<bool> pub(String? subject, Uint8List data,
-      {String? replyTo, bool? buffer, Header? header}) async {
+      {String? replyTo, bool? buffer, JSHeader? header}) async {
     buffer ??= defaultPubBuffer;
-    if (status != Status.connected) {
+    if (status != jsStatus.connected) {
       if (buffer) {
-        _pubBuffer.add(_Pub(subject, data, replyTo));
+        _pubBuffer.add(_Pubjs(subject, data, replyTo));
         return true;
       } else {
         return false;
@@ -599,12 +599,12 @@ print(op);
 
   ///publish by string
   Future<bool> pubString(String subject, String str,
-      {String? replyTo, bool buffer = true, Header? header}) async {
+      {String? replyTo, bool buffer = true, JSHeader? header}) async {
     return pub(subject, utf8.encode(str) as Uint8List,
         replyTo: replyTo, buffer: buffer);
   }
 
-  Future<bool> _pub(_Pub p) async {
+  Future<bool> _pub(_Pubjs p) async {
     if (p.replyTo == null) {
       _add('pub ${p.subject} ${p.data.length}');
     } else {
@@ -635,7 +635,7 @@ print(op);
   // }
 
   ///subscribe to subject option with queuegroup
-  Subscription<T> sub<T>(
+  SubscriptionJS<T> sub<T>(
     String subject, {
     String? queueGroup,
     T Function(String)? jsonDecoder,
@@ -647,11 +647,12 @@ print(op);
       jsonDecoder = _getJsonDecoder();
     }
 
-    var s = Subscription<T>(_ssid, subject, this,
+    var s = SubscriptionJS<T>(_ssid, subject, this,
         queueGroup: queueGroup, jsonDecoder: jsonDecoder);
     _subs[_ssid] = s;
-    if (status == Status.connected) {
+    if (status == jsStatus.connected) {
       _sub(subject, _ssid, queueGroup: queueGroup);
+      // _subjs(subject, _ssid);
       _backendSubs[_ssid] = true;
     }
     return s;
@@ -666,7 +667,7 @@ print(op);
   }
 
   ///unsubscribe
-  bool unSub(Subscription s) {
+  bool unSub(SubscriptionJS s) {
     var sid = s.sid;
 
     if (_subs[sid] == null) return false;
@@ -729,7 +730,7 @@ print(op);
 
   /// get Inbox prefix default '_INBOX'
   set inboxPrefix(String i) {
-    if (_clientStatus == _ClientStatus.used) {
+    if (_clientStatus == _ClientjsStatus.used) {
       throw NatsException('inbox prefix can not change when connection in use');
     }
     _inboxPrefix = i;
@@ -738,10 +739,10 @@ print(op);
   /// set Inbox prefix default '_INBOX'
   String get inboxPrefix => _inboxPrefix;
 
-  final _inboxs = <String, Subscription>{};
+  final _inboxs = <String, SubscriptionJS>{};
   final _mutex = Mutex();
   String? _inboxSubPrefix;
-  Subscription? _inboxSub;
+  SubscriptionJS? _inboxSub;
 
   /// Request will send a request payload and deliver the response message,
   /// TimeoutException on timeout.
@@ -755,7 +756,7 @@ print(op);
   ///   timeout = true;
   /// }
   /// ```
-  Future<Message<T>> request<T>(
+  Future<JSMessage<T>> request<T>(
     String subj,
     Uint8List data, {
     Duration timeout = const Duration(seconds: 2),
@@ -764,7 +765,7 @@ print(op);
     if (!connected) {
       throw NatsException("request error: client not connected");
     }
-    Message resp;
+    JSMessage resp;
     //ensure no other request
     await _mutex.acquire();
     //get registered json decoder
@@ -794,13 +795,13 @@ print(op);
     } finally {
       _mutex.release();
     }
-    var msg = Message<T>(resp.subject, resp.sid, resp.byte, this,
+    var msg = JSMessage<T>(resp.subject, resp.sid, resp.byte, this,
         jsonDecoder: jsonDecoder);
     return msg;
   }
 
   /// requestString() helper to request()
-  Future<Message<T>> requestString<T>(
+  Future<JSMessage<T>> requestString<T>(
     String subj,
     String data, {
     Duration timeout = const Duration(seconds: 2),
@@ -814,7 +815,7 @@ print(op);
     );
   }
 
-  void _setStatus(Status newStatus) {
+  void _setStatus(jsStatus newStatus) {
     _status = newStatus;
     _statusController.add(newStatus);
   }
@@ -827,7 +828,7 @@ print(op);
 
   ///close connection to NATS server unsub to server but still keep subscription list at client
   Future close() async {
-    _setStatus(Status.closed);
+    _setStatus(jsStatus.closed);
     _backendSubs.forEach((_, s) => s = false);
     _inboxs.clear();
     await _wsChannel?.sink.close();
@@ -838,7 +839,7 @@ print(op);
     _tcpSocket = null;
 
     _buffer = [];
-    _clientStatus = _ClientStatus.closed;
+    _clientStatus = _ClientjsStatus.closed;
   }
 
   /// discontinue tcpConnect. use connect(uri) instead
@@ -861,16 +862,16 @@ print(op);
   /// close tcp connect Only for testing
   Future<void> tcpClose() async {
     await _tcpSocket?.close();
-    _setStatus(Status.disconnected);
+    _setStatus(jsStatus.disconnected);
   }
 
   /// wait until client connected
   Future<void> waitUntilConnected() async {
-    await waitUntil(Status.connected);
+    await waitUntil(jsStatus.connected);
   }
 
   /// wait untril status
-  Future<void> waitUntil(Status s) async {
+  Future<void> waitUntil(jsStatus s) async {
     if (status == s) {
       return;
     }
