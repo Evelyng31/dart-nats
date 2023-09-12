@@ -8,7 +8,7 @@ import 'package:dart_nats/dart_nats.dart';
 import 'package:dart_nats/src/clientjs.dart';
 import 'package:test/test.dart';
 
-void main() {
+void main() { 
   group('all', () {
     test('jetstreamInfo', () async {
       var client = ClientJS();
