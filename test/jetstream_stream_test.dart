@@ -1,9 +1,6 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-
-
 import 'package:dart_nats/dart_nats.dart';
 import 'package:dart_nats/src/clientjs.dart';
 import 'package:test/test.dart';
@@ -270,6 +267,7 @@ void main() {
       var msg = sub.stream.listen((event) {
         print('CC:${event.string}');
       });
+      print(msg);
       Future.delayed(Duration(minutes: 1));
     });
 
