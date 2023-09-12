@@ -1,7 +1,6 @@
 
 import 'dart:convert';
 import 'package:dart_nats/dart_nats.dart';
-import 'package:dart_nats/src/clientjs.dart';
 import 'package:test/test.dart';
 
 void main() {

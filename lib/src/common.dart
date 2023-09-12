@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 Map<String, dynamic> _removeNull(Map<String, dynamic> data) {
   var data2 = <String, dynamic>{};
 
@@ -195,7 +197,7 @@ class ConnectOption {
     return _removeNull(data);
   }
 }
-
+/// This class is to have ConsumerConfig Structure
 class JsConsumerConfig{
   String streamName = "";
   String? name;
@@ -215,7 +217,7 @@ class JsConsumerConfig{
     };
   }
 }
-
+/// This class is to have ConsumerConfig Structure
 class ConsumerConfig {
   String? description;
   String ackPolicy = "none";

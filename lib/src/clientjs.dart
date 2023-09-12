@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:core';
@@ -51,26 +53,46 @@ enum _ClientjsStatus {
   used,
   closed,
 }
-
+/// This class is to set Jetstream Configuration
 class JSStreamConfig {
+  /// set Consumer name
   String name = '';
+  /// set Subject
   List<String> subjects = []; 
+  /// there are 3 option - 'limits','all',
   String retention = 'limits';
+  /// Set Maximum Consumer, default is unlimited
   int max_consumers = -1;
+  /// Set Maximum Message per Subject, default is unlimited
   int max_msgs_per_subject = -1;
+  /// Set Maximum Message, default is unlimited
   int max_msgs = -1;
+  /// Set Maximum Byte, default is unlimited
   int max_bytes = -1;
+  /// Set Maximum Age, default is zero
   int max_age = 0;
+  /// Set Maximum Message Size, default is unlimited
   int max_msg_size = -1;
+  /// Set storage place, 2 Option: 'file','memeory'
   String storage = 'file';
+  /// Set Discard Policy, default is old.
+  /// 2 Option: 'old','new'
   String discard = 'old';
+  /// Set Number of Replication, default is One
   int num_replicas = 1;
+  /// Set Duplicate Window, default below
   int duplicate_window = 120000000000;
+  /// Set Sealed, default false
   bool sealed = false;
+  /// Set 'Can msg be delete', default false
   bool deny_delete = false;
+  /// Set 'Can msg be purge', default false
   bool deny_purge = false;
+  /// Set Allow Header Rollup, default false
   bool allow_rollup_hdrs = false;
+  /// Set Allow Direct, default false
   bool allow_direct = false;
+  /// Set Mirrow Direct, default false
   bool mirror_direct = false;
 
   JSStreamConfig(
