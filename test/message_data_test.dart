@@ -21,13 +21,23 @@ void main() {
       // await client.connect(Uri.parse('nats://que.orderly.my:4222'), retryInterval: 1);
       await client.connect(Uri.parse('nats://localhost:4222'), retryInterval: 1);
       //below code is okay. We need to pass stream name
-      client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass'.codeUnits));
+       client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass'.codeUnits));
+       client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass1'.codeUnits));
+       client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass23'.codeUnits));
+    
+       var sub = await client.subjs('MYVI.CAR', durable: true, streamname: "MYVI", consumername: "checkrequest");
+      
+      var specialmsg = await sub.stream.first;
+      print("special, ${specialmsg.string}");
 
-      var sub = client.sub('MYVI.CAR');
-      client.pub('MYVI.CAR', Uint8List.fromList('messagewildfailpass'.codeUnits));
-      var msg = await sub.stream.first;
-      print(msg);
-      await client.close();
+      var msg = sub.stream.listen((event) {
+        print('CC:${event.string}');
+      });
+    // client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass'.codeUnits));
+      
+      Future.delayed(Duration(minutes: 1));
+    //  print(msg);
+      // await client.close();
       //expect('message1', equals('message1'));
     });
     test('respond', () async {

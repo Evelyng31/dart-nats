@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:core';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -49,6 +50,93 @@ enum _ClientjsStatus {
   init,
   used,
   closed,
+}
+
+class JSStreamConfig {
+  String name = '';
+  List<String> subjects = []; 
+  String retention = 'limits';
+  int max_consumers = -1;
+  int max_msgs_per_subject = -1;
+  int max_msgs = -1;
+  int max_bytes = -1;
+  int max_age = 0;
+  int max_msg_size = -1;
+  String storage = 'file';
+  String discard = 'old';
+  int num_replicas = 1;
+  int duplicate_window = 120000000000;
+  bool sealed = false;
+  bool deny_delete = false;
+  bool deny_purge = false;
+  bool allow_rollup_hdrs = false;
+  bool allow_direct = false;
+  bool mirror_direct = false;
+
+  JSStreamConfig(
+    {String name = '', 
+    List<String> subjects = const [], 
+    String retention = 'limits',
+    int max_consumers = -1,
+    int max_msgs_per_subject = -1,
+    int max_msgs = -1,
+    int max_bytes = -1,
+    int max_age = 0,
+    int max_msg_size = -1,
+    String storage = 'file',
+    String discard = 'old',
+    int num_replicas = 1,
+    int duplicate_window = 120000000000,
+    bool sealed = false,
+    bool deny_delete = false,
+    bool deny_purge = false,
+    bool allow_rollup_hdrs = false,
+    bool allow_direct = false,
+    bool mirror_direct = false,
+    }) {
+    this.name = name;
+    this.subjects = subjects;
+    this.retention = retention;
+    this.max_consumers = max_consumers;
+    this.max_msgs_per_subject = max_msgs_per_subject;
+    this.max_msgs = max_msgs;
+    this.max_bytes = max_bytes;
+    this.max_age = max_age;
+    this.max_msg_size = max_msg_size;
+    this.storage = storage;
+    this.discard = discard;
+    this.num_replicas = num_replicas;
+    this.duplicate_window = duplicate_window;
+    this.sealed = sealed;
+    this.deny_delete = deny_delete;
+    this.deny_purge = deny_purge;
+    this.allow_rollup_hdrs = allow_rollup_hdrs;
+    this.allow_direct = allow_direct;
+    this.mirror_direct = mirror_direct;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'subjects': subjects,
+      'retention': retention,
+      'max_consumers': max_consumers,
+      'max_msgs_per_subject': max_msgs_per_subject,
+      'max_msgs': max_msgs,
+      'max_bytes': max_bytes,
+      'max_age':max_age,
+      'max_msg_size':max_msg_size,
+      'storage':storage,
+      'discard':discard,
+      'num_replicas':num_replicas,
+      'duplicate_window':duplicate_window,
+      'sealed':sealed,
+      'deny_delete':deny_delete,
+      'allow_rollup_hdrs':allow_rollup_hdrs,
+      'allow_direct':allow_direct,
+      'mirror_direct':mirror_direct
+    };
+  }
 }
 
 class JetStreamAPIConstants {
@@ -675,7 +763,7 @@ class ClientJS {
     if (T != dynamic && jsonDecoder == null) {
       jsonDecoder = _getJsonDecoder();
     }
-
+    
     var s = SubscriptionJS<T>(_ssid, subject, this,
         queueGroup: queueGroup, jsonDecoder: jsonDecoder);
     _subs[_ssid] = s;
@@ -686,12 +774,32 @@ class ClientJS {
     }
     return s;
   }
-
-  void _subjs(String? subject, int sid, {String? queueGroup}) {
-      
-      _add('sub MYVI.CAR --durable checkrequest $sid');
+///subscribe to subject option with durable
+   Future<SubscriptionJS<T>> subjs<T>(
+    String subject, {
+    bool durable = false,
+    String? streamname,
+    String? consumername,
+  }) async {
     
+    if(durable && (streamname == null || consumername == null)){
+      throw Exception(NatsException("Stream Name and Consumer Name must be given when Durable set to true"));
+    } 
+    
+    if(durable){
+      var inbox = newInbox();
+      var inboxSub = this.sub(inbox);
+      this.getJsConsumerInfo(this, inbox, streamname!, consumername!);
+      var receive = await inboxSub.stream.first;
+      var receiveString =   utf8.decode(receive.data);
+      var map =  jsonDecode(receiveString);
+      // var configMap = jsonDecode(map['config']);
+      subject = map['config']['deliver_subject'];
+    }
+ 
+  return this.sub(subject);
   }
+
 
   void _sub(String? subject, int sid, {String? queueGroup}) {
     if (queueGroup == null) {
@@ -916,4 +1024,113 @@ class ClientJS {
       }
     }
   }
+
+  getJsServerInfo(ClientJS client,String inbox){
+    client.sub(inbox);
+    client.pubString('\$JS.API.INFO', '{}', replyTo: inbox);
+  }
+
+  getJsStreamList(ClientJS client,String inbox){
+    var apiPrefix = JetStreamAPIConstants.apiStreamListT;
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    client.pubString(apiString, '{}', replyTo: inbox);
+  }
+  getJsStreamNames(ClientJS client,String inbox){
+    var apiPrefix = JetStreamAPIConstants.apiStreams;
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+      client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  getJsStreamInfo(ClientJS client,String inbox, String streamname){
+    var apiPrefix = JetStreamAPIConstants.apiStreamInfoT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+      client.pubString(apiString, '{}', replyTo: inbox);
+  }
+  deleteJsStream(ClientJS client,String inbox, String streamname){
+     var apiPrefix = JetStreamAPIConstants.apiStreamDeleteT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;  
+      client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  purgeJsStream(ClientJS client,String inbox, String streamname){
+     var apiPrefix = JetStreamAPIConstants.apiStreamPurgeT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+      client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  createJsStream(ClientJS client,String inbox, String streamname, JSStreamConfig config){
+     var apiPrefix = JetStreamAPIConstants.apiStreamCreateT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+      Map<String, dynamic> configMap = config.toJson();
+      String json = jsonEncode(configMap);
+      client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+  updateJsStream(ClientJS client,String inbox, String streamname, JSStreamConfig config){
+     var apiPrefix = JetStreamAPIConstants.apiStreamUpdateT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+      Map<String, dynamic> configMap = config.toJson();
+      String json = jsonEncode(configMap);
+      client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  createJsConsumer(ClientJS client,String inbox, String streamname, JsConsumerConfig config){
+    var apiPrefix = JetStreamAPIConstants.apiConsumerCreateT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;     
+      print(apiString);
+      Map<String, dynamic> configMap = config.toJson();
+      String json = jsonEncode(configMap); 
+      client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  createJsConsumerWithDurable(ClientJS client,String inbox, String streamname,String consumername, JsConsumerConfig config){
+     var apiPrefix = JetStreamAPIConstants.apiConsumerCreateWithDurableT.replaceAll("%s", streamname);
+      apiPrefix = apiPrefix.replaceAll("%c", consumername);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;     
+      print(apiString);
+      Map<String, dynamic> configMap = config.toJson();
+      String json = jsonEncode(configMap); 
+      client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  createJsConsumerWithFilter(ClientJS client,String inbox, String streamname,String consumername, String filterSubject,JsConsumerConfig config){
+    var apiPrefix = JetStreamAPIConstants.apiConsumerCreateWithFilterSubjectT.replaceAll("%s", streamname);
+      apiPrefix = apiPrefix.replaceAll("%c", consumername);
+      apiPrefix = apiPrefix.replaceAll("%f", filterSubject);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;     
+      print(apiString);  
+      Map<String, dynamic> configMap = config.toJson();
+      String json = jsonEncode(configMap); 
+      client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  getJsConsumerList(ClientJS client,String inbox, String streamname){
+     var apiPrefix = JetStreamAPIConstants.apiConsumerListT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;     
+      print(apiString);     
+      client.pubString(apiString, '{"Name":"${streamname}"}', replyTo: inbox);
+  }
+
+  getJsStreamConsumerNames(ClientJS client,String inbox, String streamname){
+     var apiPrefix = JetStreamAPIConstants.apiConsumerNamesT.replaceAll("%s", streamname);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;     
+      print(apiString);     
+      client.pubString(apiString, '{"Name":"${streamname}"}', replyTo: inbox);
+  }
+
+  getJsConsumerInfo(ClientJS client,String inbox, String streamname, String consumername){
+    var apiPrefix = JetStreamAPIConstants.apiConsumerInfoT.replaceAll("%s", streamname);
+      apiPrefix = apiPrefix.replaceAll("%c", consumername);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;     
+      print(apiString);     
+      client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  deleteJsConsumer(ClientJS client,String inbox, String streamname, String consumername ){
+     var apiPrefix = JetStreamAPIConstants.apiConsumerDeleteT.replaceAll("%s", streamname);
+      apiPrefix = apiPrefix.replaceAll("%c", consumername);
+      String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;        
+      client.pubString(apiString, '{}', replyTo: inbox);
+  }
+  
 }
+

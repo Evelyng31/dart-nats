@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dart_nats/dart_nats.dart';
+import 'package:dart_nats/src/clientjs.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -37,6 +38,8 @@ void main() {
       await server.close();
       expect(receive.string, equals('respond'));
     });
+
+    
     test('request', () async {
       var server = Client();
       await server.connect(Uri.parse('ws://localhost:8080'));
