@@ -260,17 +260,18 @@ void main() {
        client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass23'.codeUnits));
     
        var sub = await client.subjs('MYVI.CAR', durable: true, streamname: "MYVI", consumername: "checkrequest");
-      
-      var firstmsg = await sub.stream.first;
-      print(firstmsg);
-      var msg = sub.stream.listen((event) {
-        print('CC:${event.string}');
-      });
-      print(msg);
-      Future.delayed(Duration(minutes: 1));
-    });
+       
+       sub.stream.listen((event) {
+          print('CC:${event.string}');
+        });
 
+      client.pub('ORDERS.MONITOR', Uint8List.fromList('listening 1'.codeUnits));
+      client.pub('ORDERS.MONITOR', Uint8List.fromList('listetning 2'.codeUnits));
+
+     
+      await Future.delayed(Duration(seconds: 2));
     
-  });
+    });    
+  });      
 }
 

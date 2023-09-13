@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dart_nats/dart_nats.dart';
 
 
@@ -11,6 +13,7 @@ void main() async {
   print(data.string);
   client.unSub(sub);
   await client.close();
+  
   ///Example of ClientJS()
   // var clientjs = ClientJS();
   // await clientjs.connect(Uri.parse('nats://localhost:4222'));
@@ -23,4 +26,5 @@ void main() async {
 
   // clientjs.unSub(subjs);
   // await clientjs.close();
+
 }
