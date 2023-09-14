@@ -807,7 +807,7 @@ class ClientJS {
     if(durable && (streamname == null || consumername == null)){
       throw Exception(NatsException("Stream Name and Consumer Name must be given when Durable set to true"));
     } 
-    
+    // print("Subscibe to $subject");
     if(durable){
       var inbox = newInbox();
       var inboxSub = this.sub(inbox);
@@ -815,10 +815,30 @@ class ClientJS {
       var receive = await inboxSub.stream.first;
       var receiveString =   utf8.decode(receive.data);
       var map =  jsonDecode(receiveString);
-      // var configMap = jsonDecode(map['config']);
-      subject = map['config']['deliver_subject'];
+      // print(map);
+      //Below code will run if durable consumer is not created
+        if(map["error"]?["code"] == 404){
+          ConsumerConfig config = ConsumerConfig(
+              durableName: consumername,
+              flowControl: true,
+              deliverSubject: consumername,
+              heartbeat: 5000000000
+            );
+          JsConsumerConfig consumerConfig = JsConsumerConfig(
+            streamName: streamname, 
+            config: config);
+          this.createJsConsumerWithDurable(this,inbox,streamname,consumername, consumerConfig);
+          var receiveCreateStatus = await inboxSub.stream.first;
+          var receiveCreateString =   utf8.decode(receiveCreateStatus.data);
+          var createMap =  jsonDecode(receiveCreateString);
+          print(createMap);
+          subject = createMap['config']['deliver_subject'];
+          return this.sub(subject);
+        }else{
+          // var configMap = jsonDecode(map['config']);
+          subject = map['config']['deliver_subject'];
+        }
     }
- 
   return this.sub(subject);
   }
 

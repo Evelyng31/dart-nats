@@ -252,21 +252,20 @@ void main() {
 
     test('testSubscribingjs', () async { 
       var client = ClientJS();
-      // await client.connect(Uri.parse('nats://que.orderly.my:4222'), retryInterval: 1);
       await client.connect(Uri.parse('nats://localhost:4222'), retryInterval: 1);
       //below code is okay. We need to pass stream name
-       client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass'.codeUnits));
-       client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass1'.codeUnits));
-       client.pub('MYVI.CAR', Uint8List.fromList('messagewild1pass23'.codeUnits));
+       client.pub('DEMO_CUSTOMERS.CHANGES.SANDBOXHQ', Uint8List.fromList('messagewild1pass'.codeUnits));
+       client.pub('DEMO_CUSTOMERS.CHANGES.SANDBOXHQ', Uint8List.fromList('messagewild1pass1'.codeUnits));
+       client.pub('DEMO_CUSTOMERS.CHANGES.SANDBOXHQ', Uint8List.fromList('messagewild1pass23'.codeUnits));
     
-       var sub = await client.subjs('MYVI.CAR', durable: true, streamname: "MYVI", consumername: "checkrequest");
-       
+      //  var sub = await client.subjs('MYVI.CAR', durable: true, streamname: "MYVI", consumername: "checkrequest");
+      var sub = await client.subjs('DEMO_CUSTOMERS.CHANGES.SANDBOXHQ',durable: true, streamname:'DEMO_CUSTOMERS',consumername:'devicetwo');
        sub.stream.listen((event) {
           print('CC:${event.string}');
         });
 
-      client.pub('ORDERS.MONITOR', Uint8List.fromList('listening 1'.codeUnits));
-      client.pub('ORDERS.MONITOR', Uint8List.fromList('listetning 2'.codeUnits));
+      // client.pub('ORDERS.MONITOR', Uint8List.fromList('listening 1'.codeUnits));
+      // client.pub('ORDERS.MONITOR', Uint8List.fromList('listetning 2'.codeUnits));
 
      
       await Future.delayed(Duration(seconds: 2));
