@@ -1,5 +1,8 @@
+// ignore_for_file: public_member_api_docs
+
 import 'dart:async';
 import 'dart:convert';
+import 'dart:core';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -8,18 +11,17 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'common.dart';
 import 'inbox.dart';
-import 'message.dart';
+import 'messagejs.dart';
 import 'nkeys.dart';
-import 'subscription.dart';
+import 'subscriptionjs.dart';
 
-enum _ReceiveState {
+enum _ReceiveJSState {
   idle, //op=msg -> msg
   msg, //newline -> idle
-
 }
 
 ///status of the nats client
-enum Status {
+enum jsStatus {
   /// disconnected or not connected
   disconnected,
 
@@ -45,24 +47,179 @@ enum Status {
   // draining_pubs,
 }
 
-enum _ClientStatus {
+enum _ClientjsStatus {
   init,
   used,
   closed,
 }
 
-class _Pub {
+/// This class is to set Jetstream Configuration
+class JSStreamConfig {
+  /// set Consumer name
+  String name = '';
+
+  /// set Subject
+  List<String> subjects = [];
+
+  /// there are 3 option - 'limits','all',
+  String retention = 'limits';
+
+  /// Set Maximum Consumer, default is unlimited
+  int max_consumers = -1;
+
+  /// Set Maximum Message per Subject, default is unlimited
+  int max_msgs_per_subject = -1;
+
+  /// Set Maximum Message, default is unlimited
+  int max_msgs = -1;
+
+  /// Set Maximum Byte, default is unlimited
+  int max_bytes = -1;
+
+  /// Set Maximum Age, default is zero
+  int max_age = 0;
+
+  /// Set Maximum Message Size, default is unlimited
+  int max_msg_size = -1;
+
+  /// Set storage place, 2 Option: 'file','memeory'
+  String storage = 'file';
+
+  /// Set Discard Policy, default is old.
+  /// 2 Option: 'old','new'
+  String discard = 'old';
+
+  /// Set Number of Replication, default is One
+  int num_replicas = 1;
+
+  /// Set Duplicate Window, default below
+  int duplicate_window = 120000000000;
+
+  /// Set Sealed, default false
+  bool sealed = false;
+
+  /// Set 'Can msg be delete', default false
+  bool deny_delete = false;
+
+  /// Set 'Can msg be purge', default false
+  bool deny_purge = false;
+
+  /// Set Allow Header Rollup, default false
+  bool allow_rollup_hdrs = false;
+
+  /// Set Allow Direct, default false
+  bool allow_direct = false;
+
+  /// Set Mirrow Direct, default false
+  bool mirror_direct = false;
+
+  JSStreamConfig({
+    String name = '',
+    List<String> subjects = const [],
+    String retention = 'limits',
+    int max_consumers = -1,
+    int max_msgs_per_subject = -1,
+    int max_msgs = -1,
+    int max_bytes = -1,
+    int max_age = 0,
+    int max_msg_size = -1,
+    String storage = 'file',
+    String discard = 'old',
+    int num_replicas = 1,
+    int duplicate_window = 120000000000,
+    bool sealed = false,
+    bool deny_delete = false,
+    bool deny_purge = false,
+    bool allow_rollup_hdrs = false,
+    bool allow_direct = false,
+    bool mirror_direct = false,
+  }) {
+    this.name = name;
+    this.subjects = subjects;
+    this.retention = retention;
+    this.max_consumers = max_consumers;
+    this.max_msgs_per_subject = max_msgs_per_subject;
+    this.max_msgs = max_msgs;
+    this.max_bytes = max_bytes;
+    this.max_age = max_age;
+    this.max_msg_size = max_msg_size;
+    this.storage = storage;
+    this.discard = discard;
+    this.num_replicas = num_replicas;
+    this.duplicate_window = duplicate_window;
+    this.sealed = sealed;
+    this.deny_delete = deny_delete;
+    this.deny_purge = deny_purge;
+    this.allow_rollup_hdrs = allow_rollup_hdrs;
+    this.allow_direct = allow_direct;
+    this.mirror_direct = mirror_direct;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'subjects': subjects,
+      'retention': retention,
+      'max_consumers': max_consumers,
+      'max_msgs_per_subject': max_msgs_per_subject,
+      'max_msgs': max_msgs,
+      'max_bytes': max_bytes,
+      'max_age': max_age,
+      'max_msg_size': max_msg_size,
+      'storage': storage,
+      'discard': discard,
+      'num_replicas': num_replicas,
+      'duplicate_window': duplicate_window,
+      'sealed': sealed,
+      'deny_delete': deny_delete,
+      'allow_rollup_hdrs': allow_rollup_hdrs,
+      'allow_direct': allow_direct,
+      'mirror_direct': mirror_direct
+    };
+  }
+}
+
+class JetStreamAPIConstants {
+  static const String defaultAPIPrefix = '\$JS.API.';
+  static const String jsDomainT = '\$JS.%s.API.';
+  static const String jsExtDomainT = '\$JS.%s.API';
+  static const String apiAccountInfo = 'INFO';
+  static const String apiConsumerCreateT = 'CONSUMER.CREATE.%s';
+  static const String apiConsumerCreateWithDurableT = 'CONSUMER.CREATE.%s.%c';
+  static const String apiConsumerCreateWithFilterSubjectT =
+      'CONSUMER.CREATE.%s.%c.%f';
+  static const String apiConsumerInfoT = 'CONSUMER.INFO.%s.%c';
+  // static const String apiRequestNextT = 'CONSUMER.MSG.NEXT.%s.%c';
+  static const String apiConsumerDeleteT = 'CONSUMER.DELETE.%s.%c';
+  static const String apiConsumerListT = 'CONSUMER.LIST.%s';
+  static const String apiConsumerNamesT = 'CONSUMER.NAMES.%s';
+  static const String apiStreams = 'STREAM.NAMES';
+  static const String apiStreamCreateT = 'STREAM.CREATE.%s';
+  static const String apiStreamInfoT = 'STREAM.INFO.%s';
+  static const String apiStreamUpdateT = 'STREAM.UPDATE.%s';
+  static const String apiStreamDeleteT = 'STREAM.DELETE.%s';
+  static const String apiStreamPurgeT = 'STREAM.PURGE.%s';
+  static const String apiStreamListT = 'STREAM.LIST';
+  static const String apiStreamSnapshotT = 'STREAM.SNAPSHOT.%s';
+  static const String apiStreamRestoreT = 'STREAM.RESTORE.%s';
+  static const String apiMsgGetT = 'STREAM.MSG.GET.%s';
+  static const String apiDirectMsgGetT = 'DIRECT.GET.%s';
+  static const String apiDirectMsgGetLastBySubjectT = 'DIRECT.GET.%s.%s';
+  static const String apiMsgDeleteT = 'STREAM.MSG.DELETE.%s';
+}
+
+class _Pubjs {
   final String? subject;
   final List<int> data;
   final String? replyTo;
 
-  _Pub(this.subject, this.data, this.replyTo);
+  _Pubjs(this.subject, this.data, this.replyTo);
 }
 
 ///NATS client
-class Client {
+class ClientJS {
   var _ackStream = StreamController<bool>.broadcast();
-  _ClientStatus _clientStatus = _ClientStatus.init;
+  _ClientjsStatus _clientStatus = _ClientjsStatus.init;
   WebSocketChannel? _wsChannel;
   Socket? _tcpSocket;
   SecureSocket? _secureSocket;
@@ -73,23 +230,23 @@ class Client {
   late Completer _pingCompleter;
   late Completer _connectCompleter;
 
-  var _status = Status.disconnected;
+  var _status = jsStatus.disconnected;
 
   /// true if connected
-  bool get connected => _status == Status.connected;
+  bool get connected => _status == jsStatus.connected;
 
-  final _statusController = StreamController<Status>.broadcast();
+  final _statusController = StreamController<jsStatus>.broadcast();
 
   var _channelStream = StreamController();
 
   ///status of the client
-  Status get status => _status;
+  jsStatus get status => _status;
 
   /// accept bad certificate NOT recomend to use in production
   bool acceptBadCert = false;
 
   /// Stream status for status update
-  Stream<Status> get statusStream => _statusController.stream;
+  Stream<jsStatus> get statusStream => _statusController.stream;
 
   var _connectOption = ConnectOption();
 
@@ -127,14 +284,14 @@ class Client {
   ///server info
   Info? get info => _info;
 
-  final _subs = <int, Subscription>{};
+  final _subs = <int, SubscriptionJS>{};
   final _backendSubs = <int, bool>{};
-  final _pubBuffer = <_Pub>[];
+  final _pubBuffer = <_Pubjs>[];
 
   int _ssid = 0;
 
   List<int> _buffer = [];
-  _ReceiveState _receiveState = _ReceiveState.idle;
+  _ReceiveJSState _receiveState = _ReceiveJSState.idle;
   String _receiveLine1 = '';
   Future _sign() async {
     if (_info.nonce != null && _nkeys != null) {
@@ -145,7 +302,7 @@ class Client {
   }
 
   ///NATS Client Constructor
-  Client() {
+  ClientJS() {
     _steamHandle();
   }
 
@@ -159,11 +316,12 @@ class Client {
       // }
 
       //Thank aktxyz for contribution
-      while (_receiveState == _ReceiveState.idle && _buffer.contains(13)) {
+      while (_receiveState == _ReceiveJSState.idle && _buffer.contains(13)) {
         var n13 = _buffer.indexOf(13);
         var msgFull =
             String.fromCharCodes(_buffer.take(n13)).toLowerCase().trim();
         var msgList = msgFull.split(' ');
+
         var msgType = msgList[0];
         //print('... process $msgType ${_buffer.length}');
 
@@ -196,14 +354,14 @@ class Client {
   }) async {
     this._retry = retry;
     _connectCompleter = Completer();
-    if (_clientStatus == _ClientStatus.used) {
+    if (_clientStatus == _ClientjsStatus.used) {
       throw Exception(
           NatsException('client in use. must close before call connect'));
     }
-    if (status != Status.disconnected && status != Status.closed) {
+    if (status != jsStatus.disconnected && status != jsStatus.closed) {
       return Future.error('Error: status not disconnected and not closed');
     }
-    _clientStatus = _ClientStatus.used;
+    _clientStatus = _ClientjsStatus.used;
     if (connectOption != null) _connectOption = connectOption;
     do {
       _connectLoop(
@@ -213,22 +371,25 @@ class Client {
         retryCount: retryCount,
       );
 
-      if (_clientStatus == _ClientStatus.closed || status == Status.closed) {
+      if (_clientStatus == _ClientjsStatus.closed ||
+          status == jsStatus.closed) {
         if (!_connectCompleter.isCompleted) {
           _connectCompleter.complete();
         }
         close();
-        _clientStatus = _ClientStatus.closed;
+        _clientStatus = _ClientjsStatus.closed;
         return;
       }
       if (!this._retry || retryCount != -1) {
         return _connectCompleter.future;
       }
       await for (var s in statusStream) {
-        if (s == Status.disconnected) {
+        if (s == jsStatus.disconnected) {
+         
           break;
         }
-        if (s == Status.closed) {
+        if (s == jsStatus.closed) {
+         
           return;
         }
       }
@@ -244,9 +405,9 @@ class Client {
         count == 0 || ((count < retryCount || retryCount == -1) && this._retry);
         count++) {
       if (count == 0) {
-        _setStatus(Status.connecting);
+        _setStatus(jsStatus.connecting);
       } else {
-        _setStatus(Status.reconnecting);
+        _setStatus(jsStatus.reconnecting);
       }
 
       try {
@@ -265,13 +426,15 @@ class Client {
       } catch (err) {
         await close();
         if (!_connectCompleter.isCompleted) {
+         
           _connectCompleter.completeError(err);
         }
-        _setStatus(Status.disconnected);
+        _setStatus(jsStatus.disconnected);
       }
     }
     if (!_connectCompleter.isCompleted) {
-      _clientStatus = _ClientStatus.closed;
+      
+      _clientStatus = _ClientjsStatus.closed;
       _connectCompleter
           .completeError(NatsException('can not connect ${uri.toString()}'));
     }
@@ -293,12 +456,12 @@ class Client {
           if (_wsChannel == null) {
             return false;
           }
-          _setStatus(Status.infoHandshake);
+          _setStatus(jsStatus.infoHandshake);
           _wsChannel?.stream.listen((event) {
             if (_channelStream.isClosed) return;
             _channelStream.add(event);
           }, onDone: () {
-            _setStatus(Status.disconnected);
+            _setStatus(jsStatus.disconnected);
           }, onError: (e) {
             close();
             throw NatsException('listen ws error: $e');
@@ -317,14 +480,14 @@ class Client {
           if (_tcpSocket == null) {
             return false;
           }
-          _setStatus(Status.infoHandshake);
+          _setStatus(jsStatus.infoHandshake);
           _tcpSocket!.listen((event) {
             if (_secureSocket == null) {
               if (_channelStream.isClosed) return;
               _channelStream.add(event);
             }
           }).onDone(() {
-            _setStatus(Status.disconnected);
+            _setStatus(jsStatus.disconnected);
           });
           return true;
         case 'tls':
@@ -333,16 +496,18 @@ class Client {
           if (port == 0) {
             port = 4443;
           }
+       
           _tcpSocket = await Socket.connect(uri.host, port,
               timeout: Duration(seconds: timeout));
           if (_tcpSocket == null) break;
-          _setStatus(Status.infoHandshake);
+          _setStatus(jsStatus.infoHandshake);
           _tcpSocket!.listen((event) {
             if (_secureSocket == null) {
               if (_channelStream.isClosed) return;
               _channelStream.add(event);
             }
           });
+     
           return true;
         default:
           throw Exception(NatsException('schema ${uri.scheme} not support'));
@@ -387,30 +552,31 @@ class Client {
 
     ///decode operation
     var i = line.indexOf(' ');
+
     String op, data;
     if (i != -1) {
-  
       op = line.substring(0, i).trim().toLowerCase();
       data = line.substring(i).trim();
     } else {
       op = line.trim().toLowerCase();
       data = '';
     }
+
     ///process operation
     switch (op) {
       case 'msg':
-        _receiveState = _ReceiveState.msg;
+        _receiveState = _ReceiveJSState.msg;
         _receiveLine1 = line;
         _processMsg();
         _receiveLine1 = '';
-        _receiveState = _ReceiveState.idle;
+        _receiveState = _ReceiveJSState.idle;
         break;
       case 'hmsg':
-        _receiveState = _ReceiveState.msg;
+        _receiveState = _ReceiveJSState.msg;
         _receiveLine1 = line;
         _processHMsg();
         _receiveLine1 = '';
-        _receiveState = _ReceiveState.idle;
+        _receiveState = _ReceiveJSState.idle;
         break;
       case 'info':
         _info = Info.fromJson(jsonDecode(data));
@@ -419,7 +585,7 @@ class Client {
         }
 
         if ((_info.tlsRequired ?? false) && _tcpSocket != null) {
-          _setStatus(Status.tlsHandshake);
+          _setStatus(jsStatus.tlsHandshake);
           var secureSocket = await SecureSocket.secure(
             _tcpSocket!,
             onBadCertificate: (certificate) {
@@ -440,12 +606,12 @@ class Client {
         if (_connectOption.verbose == true) {
           var ack = await _ackStream.stream.first;
           if (ack) {
-            _setStatus(Status.connected);
+            _setStatus(jsStatus.connected);
           } else {
-            _setStatus(Status.disconnected);
+            _setStatus(jsStatus.disconnected);
           }
         } else {
-          _setStatus(Status.connected);
+          _setStatus(jsStatus.connected);
         }
         _backendSubscriptAll();
         _flushPubBuffer();
@@ -454,7 +620,7 @@ class Client {
         }
         break;
       case 'ping':
-        if (status == Status.connected) {
+        if (status == jsStatus.connected) {
           _add('pong');
         }
         break;
@@ -498,7 +664,7 @@ class Client {
     }
 
     if (_subs[sid] != null) {
-      _subs[sid]?.add(Message(subject, sid, payload, this, replyTo: replyTo));
+      _subs[sid]?.add(JSMessage(subject, sid, payload, this, replyTo: replyTo));
     }
   }
 
@@ -528,8 +694,8 @@ class Client {
     }
 
     if (_subs[sid] != null) {
-      var msg = Message(subject, sid, payload, this,
-          replyTo: replyTo, header: Header.fromBytes(header));
+      var msg = JSMessage(subject, sid, payload, this,
+          replyTo: replyTo, header: JSHeader.fromBytes(header));
       _subs[sid]?.add(msg);
     }
   }
@@ -554,11 +720,11 @@ class Client {
   ///publish by byte (Uint8List) return true if sucess sending or buffering
   ///return false if not connect
   Future<bool> pub(String? subject, Uint8List data,
-      {String? replyTo, bool? buffer, Header? header}) async {
+      {String? replyTo, bool? buffer, JSHeader? header}) async {
     buffer ??= defaultPubBuffer;
-    if (status != Status.connected) {
+    if (status != jsStatus.connected) {
       if (buffer) {
-        _pubBuffer.add(_Pub(subject, data, replyTo));
+        _pubBuffer.add(_Pubjs(subject, data, replyTo));
         return true;
       } else {
         return false;
@@ -597,12 +763,12 @@ class Client {
 
   ///publish by string
   Future<bool> pubString(String subject, String str,
-      {String? replyTo, bool buffer = true, Header? header}) async {
+      {String? replyTo, bool buffer = true, JSHeader? header}) async {
     return pub(subject, utf8.encode(str) as Uint8List,
         replyTo: replyTo, buffer: buffer);
   }
 
-  Future<bool> _pub(_Pub p) async {
+  Future<bool> _pub(_Pubjs p) async {
     if (p.replyTo == null) {
       _add('pub ${p.subject} ${p.data.length}');
     } else {
@@ -633,7 +799,7 @@ class Client {
   // }
 
   ///subscribe to subject option with queuegroup
-  Subscription<T> sub<T>(
+  SubscriptionJS<T> sub<T>(
     String subject, {
     String? queueGroup,
     T Function(String)? jsonDecoder,
@@ -645,14 +811,60 @@ class Client {
       jsonDecoder = _getJsonDecoder();
     }
 
-    var s = Subscription<T>(_ssid, subject, this,
+    var s = SubscriptionJS<T>(_ssid, subject, this,
         queueGroup: queueGroup, jsonDecoder: jsonDecoder);
     _subs[_ssid] = s;
-    if (status == Status.connected) {
+    if (status == jsStatus.connected) {
       _sub(subject, _ssid, queueGroup: queueGroup);
+      // _subjs(subject, _ssid);
       _backendSubs[_ssid] = true;
     }
     return s;
+  }
+
+  ///subscribe to subject option with durable
+  Future<SubscriptionJS<T>> subjs<T>(
+    String subject, {
+    bool durable = false,
+    String? streamname,
+    String? consumername,
+  }) async {
+    if (durable && (streamname == null || consumername == null)) {
+      throw Exception(NatsException(
+          "Stream Name and Consumer Name must be given when Durable set to true"));
+    }
+    // print("Subscibe to $subject");
+    if (durable) {
+      var inbox = newInbox();
+      var inboxSub = this.sub(inbox);
+      this.getJsConsumerInfo(this, inbox, streamname!, consumername!);
+      var receive = await inboxSub.stream.first;
+      var receiveString = utf8.decode(receive.data);
+      var map = jsonDecode(receiveString);
+      // print(map);
+      //Below code will run if durable consumer is not created
+      if (map["error"]?["code"] == 404) {
+        ConsumerConfig config = ConsumerConfig(
+            durableName: consumername,
+            flowControl: true,
+            deliverSubject: consumername,
+            heartbeat: 5000000000);
+        JsConsumerConfig consumerConfig =
+            JsConsumerConfig(streamName: streamname, config: config);
+        this.createJsConsumerWithDurable(
+            this, inbox, streamname, consumername, consumerConfig);
+        var receiveCreateStatus = await inboxSub.stream.first;
+        var receiveCreateString = utf8.decode(receiveCreateStatus.data);
+        var createMap = jsonDecode(receiveCreateString);
+  
+        subject = createMap['config']['deliver_subject'];
+        return this.sub(subject);
+      } else {
+        // var configMap = jsonDecode(map['config']);
+        subject = map['config']['deliver_subject'];
+      }
+    }
+    return this.sub(subject);
   }
 
   void _sub(String? subject, int sid, {String? queueGroup}) {
@@ -664,7 +876,7 @@ class Client {
   }
 
   ///unsubscribe
-  bool unSub(Subscription s) {
+  bool unSub(SubscriptionJS s) {
     var sid = s.sid;
 
     if (_subs[sid] == null) return false;
@@ -727,7 +939,7 @@ class Client {
 
   /// get Inbox prefix default '_INBOX'
   set inboxPrefix(String i) {
-    if (_clientStatus == _ClientStatus.used) {
+    if (_clientStatus == _ClientjsStatus.used) {
       throw NatsException('inbox prefix can not change when connection in use');
     }
     _inboxPrefix = i;
@@ -736,10 +948,10 @@ class Client {
   /// set Inbox prefix default '_INBOX'
   String get inboxPrefix => _inboxPrefix;
 
-  final _inboxs = <String, Subscription>{};
+  final _inboxs = <String, SubscriptionJS>{};
   final _mutex = Mutex();
   String? _inboxSubPrefix;
-  Subscription? _inboxSub;
+  SubscriptionJS? _inboxSub;
 
   /// Request will send a request payload and deliver the response message,
   /// TimeoutException on timeout.
@@ -753,7 +965,7 @@ class Client {
   ///   timeout = true;
   /// }
   /// ```
-  Future<Message<T>> request<T>(
+  Future<JSMessage<T>> request<T>(
     String subj,
     Uint8List data, {
     Duration timeout = const Duration(seconds: 2),
@@ -762,7 +974,7 @@ class Client {
     if (!connected) {
       throw NatsException("request error: client not connected");
     }
-    Message resp;
+    JSMessage resp;
     //ensure no other request
     await _mutex.acquire();
     //get registered json decoder
@@ -792,19 +1004,18 @@ class Client {
     } finally {
       _mutex.release();
     }
-    var msg = Message<T>(resp.subject, resp.sid, resp.byte, this,
+    var msg = JSMessage<T>(resp.subject, resp.sid, resp.byte, this,
         jsonDecoder: jsonDecoder);
     return msg;
   }
 
   /// requestString() helper to request()
-  Future<Message<T>> requestString<T>(
+  Future<JSMessage<T>> requestString<T>(
     String subj,
     String data, {
     Duration timeout = const Duration(seconds: 2),
     T Function(String)? jsonDecoder,
   }) {
-    print(data);
     return request<T>(
       subj,
       Uint8List.fromList(data.codeUnits),
@@ -813,7 +1024,7 @@ class Client {
     );
   }
 
-  void _setStatus(Status newStatus) {
+  void _setStatus(jsStatus newStatus) {
     _status = newStatus;
     _statusController.add(newStatus);
   }
@@ -826,18 +1037,25 @@ class Client {
 
   ///close connection to NATS server unsub to server but still keep subscription list at client
   Future close() async {
-    _setStatus(Status.closed);
+    _setStatus(jsStatus.closed);
     _backendSubs.forEach((_, s) => s = false);
     _inboxs.clear();
-    await _wsChannel?.sink.close();
-    _wsChannel = null;
-    await _secureSocket?.close();
-    _secureSocket = null;
-    await _tcpSocket?.close();
-    _tcpSocket = null;
+    try {
+      await _wsChannel?.sink.close();
+      _wsChannel = null;
+      await _secureSocket?.close();
+      _secureSocket = null;
+      await _tcpSocket?.close();
+      _tcpSocket = null;
+    } on SocketException catch (e) {
+      print("clientjs.dart: $e");
+      _wsChannel = null;
+      _secureSocket = null;
+      _tcpSocket = null;
+    }
 
     _buffer = [];
-    _clientStatus = _ClientStatus.closed;
+    _clientStatus = _ClientjsStatus.closed;
   }
 
   /// discontinue tcpConnect. use connect(uri) instead
@@ -860,16 +1078,16 @@ class Client {
   /// close tcp connect Only for testing
   Future<void> tcpClose() async {
     await _tcpSocket?.close();
-    _setStatus(Status.disconnected);
+    _setStatus(jsStatus.disconnected);
   }
 
   /// wait until client connected
   Future<void> waitUntilConnected() async {
-    await waitUntil(Status.connected);
+    await waitUntil(jsStatus.connected);
   }
 
   /// wait untril status
-  Future<void> waitUntil(Status s) async {
+  Future<void> waitUntil(jsStatus s) async {
     if (status == s) {
       return;
     }
@@ -878,5 +1096,134 @@ class Client {
         break;
       }
     }
+  }
+
+  getJsServerInfo(ClientJS client, String inbox) {
+    client.sub(inbox);
+    client.pubString('\$JS.API.INFO', '{}', replyTo: inbox);
+  }
+
+  getJsStreamList(ClientJS client, String inbox) {
+    var apiPrefix = JetStreamAPIConstants.apiStreamListT;
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  getJsStreamNames(ClientJS client, String inbox) {
+    var apiPrefix = JetStreamAPIConstants.apiStreams;
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  getJsStreamInfo(ClientJS client, String inbox, String streamname) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiStreamInfoT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  deleteJsStream(ClientJS client, String inbox, String streamname) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiStreamDeleteT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  purgeJsStream(ClientJS client, String inbox, String streamname) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiStreamPurgeT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  createJsStream(
+      ClientJS client, String inbox, String streamname, JSStreamConfig config) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiStreamCreateT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    Map<String, dynamic> configMap = config.toJson();
+    String json = jsonEncode(configMap);
+    client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  updateJsStream(
+      ClientJS client, String inbox, String streamname, JSStreamConfig config) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiStreamUpdateT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    Map<String, dynamic> configMap = config.toJson();
+    String json = jsonEncode(configMap);
+    client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  createJsConsumer(ClientJS client, String inbox, String streamname,
+      JsConsumerConfig config) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiConsumerCreateT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    print(apiString);
+    Map<String, dynamic> configMap = config.toJson();
+    String json = jsonEncode(configMap);
+    client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  createJsConsumerWithDurable(ClientJS client, String inbox, String streamname,
+      String consumername, JsConsumerConfig config) {
+    var apiPrefix = JetStreamAPIConstants.apiConsumerCreateWithDurableT
+        .replaceAll("%s", streamname);
+    apiPrefix = apiPrefix.replaceAll("%c", consumername);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    print(apiString);
+    Map<String, dynamic> configMap = config.toJson();
+    String json = jsonEncode(configMap);
+    client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  createJsConsumerWithFilter(ClientJS client, String inbox, String streamname,
+      String consumername, String filterSubject, JsConsumerConfig config) {
+    var apiPrefix = JetStreamAPIConstants.apiConsumerCreateWithFilterSubjectT
+        .replaceAll("%s", streamname);
+    apiPrefix = apiPrefix.replaceAll("%c", consumername);
+    apiPrefix = apiPrefix.replaceAll("%f", filterSubject);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    print(apiString);
+    Map<String, dynamic> configMap = config.toJson();
+    String json = jsonEncode(configMap);
+    client.pubString(apiString, '${json}', replyTo: inbox);
+  }
+
+  getJsConsumerList(ClientJS client, String inbox, String streamname) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiConsumerListT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    print(apiString);
+    client.pubString(apiString, '{"Name":"${streamname}"}', replyTo: inbox);
+  }
+
+  getJsStreamConsumerNames(ClientJS client, String inbox, String streamname) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiConsumerNamesT.replaceAll("%s", streamname);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    print(apiString);
+    client.pubString(apiString, '{"Name":"${streamname}"}', replyTo: inbox);
+  }
+
+  getJsConsumerInfo(
+      ClientJS client, String inbox, String streamname, String consumername) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiConsumerInfoT.replaceAll("%s", streamname);
+    apiPrefix = apiPrefix.replaceAll("%c", consumername);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    print(apiString);
+    client.pubString(apiString, '{}', replyTo: inbox);
+  }
+
+  deleteJsConsumer(
+      ClientJS client, String inbox, String streamname, String consumername) {
+    var apiPrefix =
+        JetStreamAPIConstants.apiConsumerDeleteT.replaceAll("%s", streamname);
+    apiPrefix = apiPrefix.replaceAll("%c", consumername);
+    String apiString = JetStreamAPIConstants.defaultAPIPrefix + apiPrefix;
+    client.pubString(apiString, '{}', replyTo: inbox);
   }
 }

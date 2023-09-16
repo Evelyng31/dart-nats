@@ -1,3 +1,5 @@
+// ignore_for_file: public_member_api_docs
+
 Map<String, dynamic> _removeNull(Map<String, dynamic> data) {
   var data2 = <String, dynamic>{};
 
@@ -194,6 +196,114 @@ class ConnectOption {
 
     return _removeNull(data);
   }
+}
+/// This class is to have ConsumerConfig Structure
+class JsConsumerConfig{
+  String streamName = "";
+  String? name;
+  ConsumerConfig config;
+
+   JsConsumerConfig({
+    required this.streamName,
+    this.name,
+    required this.config,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'stream_name': streamName,
+      'name': name,
+      'config': config.toJson(), // Convert the inner ConsumerConfig to JSON
+    };
+  }
+}
+/// This class is to have ConsumerConfig Structure
+class ConsumerConfig {
+  String? description;
+  String ackPolicy = "none";
+  int ackWait = 0;
+  String deliverPolicy = "all";
+  String? deliverSubject;
+  String? deliverGroup;
+  String? durableName;
+  String name = "";
+  String? filterSubject;
+  List<String>? filterSubjects;
+  bool flowControl = false;
+  int heartbeat = 0;
+  int maxAckPending = 0;
+  int maxDeliver = 0;
+  int maxWaiting = 0;
+  int optStartSeq = 0;
+  String replayPolicy = "instant";
+  String? sampleFrequency = "";
+  bool headersOnly = false;
+  int maxRequestBatch = 0;
+  int maxRequestExpires = 0;
+  int maxRequestMaxBytes = 0;
+  int inactiveThreshold = 0;
+  int replicas = 0;
+  bool memoryStorage = false;
+
+    ConsumerConfig({
+    this.description,
+    this.ackPolicy = "none",
+    this.ackWait = 0,
+    this.deliverPolicy = "all",
+    this.deliverSubject,
+    this.deliverGroup,
+    this.durableName,
+    this.name = "",
+    this.filterSubject,
+    this.filterSubjects,
+    this.flowControl = false,
+    this.heartbeat = 0,
+    this.maxAckPending = 0,
+    this.maxDeliver = 0,
+    this.maxWaiting = 0,
+    this.optStartSeq = 0,
+    this.replayPolicy = "instant",
+    this.sampleFrequency,
+    this.headersOnly = false,
+    this.maxRequestBatch = 0,
+    this.maxRequestExpires = 0,
+    this.maxRequestMaxBytes = 0,
+    this.inactiveThreshold = 0,
+    this.replicas = 0,
+    this.memoryStorage = false,
+  });
+
+   Map<String, dynamic> toJson() {
+    final data = <String, dynamic>{};
+    data['description'] = description;
+    data['ack_policy'] = ackPolicy;
+    data['ack_wait'] = ackWait;
+    data['delivery_policy'] = deliverPolicy;
+    data['deliver_subject'] = deliverSubject;
+    data['deliver_group'] = deliverGroup;
+    data['durable_name'] = durableName;
+    data['name'] = name;
+    data['filter_subject'] = filterSubject;
+    data['filter_subjects'] = filterSubjects;
+    data['flow_control'] = flowControl;
+    data['idle_heartbeat'] = heartbeat;
+    data['max_ack_pending'] = maxAckPending;
+    data['max_deliver'] = maxDeliver;
+    data['max_waiting'] = maxWaiting;
+    data['max_deliver'] = maxDeliver;
+    data['opt_start_seq'] = optStartSeq;
+    data['replay_policy'] = replayPolicy;
+    data['sample_freq'] = sampleFrequency;
+    data['headers_only'] = headersOnly;
+    data['max_batch'] = maxRequestBatch;
+    data['max_expires'] = maxRequestExpires;
+    data['max_bytes'] = maxRequestMaxBytes;
+    data['inactive_threshold'] = inactiveThreshold;
+    data['num_replicas'] = replicas;
+    data['mem_storage'] = memoryStorage;
+
+    return _removeNull(data);
+   }
 }
 
 /// Nats Exception
